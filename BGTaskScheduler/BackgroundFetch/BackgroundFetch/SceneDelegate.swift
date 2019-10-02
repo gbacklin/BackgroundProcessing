@@ -19,7 +19,7 @@ let RefreshTaskIdentifier = "com.marizack.BackgroundFetch.refresh"
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
-    var backgroundTask: BGAppRefreshTask?
+    var backgroundTask: BGProcessingTask?
 
     // MARK: - Scene Lifecycle
     
@@ -68,13 +68,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Called as the scene transitions from the foreground to the background.
         // Use this method to save data, release shared resources, and store enough scene-specific state information
         // to restore the scene back to its current state.
-        debugPrint("Scheduling App Refresh...")
         scheduleAppRefresh()
     }
 
     // MARK: - Fethching methods
     
-    func fetchRSS(url: String, task: BGAppRefreshTask?) {
+    func fetchRSS(url: String, task: BGProcessingTask?) {
         debugPrint("fetchRSS \(url)...")
         
         backgroundTask = task
@@ -97,19 +96,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: RefreshTaskIdentifier, using: DispatchQueue.global()) { task in
             // Downcast the parameter to an app refresh task as this identifier is used for a refresh request.
             //If we keep requiredExternalPower = true then it required device is connected to external power.
-            self.handleAppRefresh(task: task as! BGAppRefreshTask)
+            self.handleAppRefresh(task: task as! BGProcessingTask)
         }
     }
 
     // MARK: - Scheduling Tasks
     
     func scheduleAppRefresh() {
-        debugPrint("scheduleAppRefresh...")
+        debugPrint("Scheduling App Refresh...")
         BGTaskScheduler.shared.cancelAllTaskRequests()
 
-        let request = BGAppRefreshTaskRequest(identifier: RefreshTaskIdentifier)
-        //request.requiresNetworkConnectivity = true // Defaults to false.
-        //request.requiresExternalPower = false
+        //let request = BGAppRefreshTaskRequest(identifier: RefreshTaskIdentifier)
+        let request = BGProcessingTaskRequest(identifier: RefreshTaskIdentifier)
+        request.requiresNetworkConnectivity = true // Defaults to false.
+        request.requiresExternalPower = false
         request.earliestBeginDate = Date(timeIntervalSinceNow: 1 * 60) // Fetch no earlier than 1 minute from now
         do {
             try BGTaskScheduler.shared.submit(request)
@@ -124,8 +124,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // MARK: - Handling Launch for Tasks
 
     // Fetch the latest feed entries from server.
-    func handleAppRefresh(task: BGAppRefreshTask) {
-        debugPrint("handleAppRefresh...")
+    // - BGAppRefreshTask
+    func handleAppRefresh(task: BGProcessingTask) {
+        debugPrint("Scheduling App Refresh...")
         backgroundTask = task
         
 //        task.expirationHandler = {
