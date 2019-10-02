@@ -89,71 +89,67 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             downloadTask.resume()
         }
     }
-    
-    // MARK: - Register Launch Handlers for Background Tasks
-    
-    func registerLaunchHandlersForBackgroundTasks() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: RefreshTaskIdentifier, using: DispatchQueue.global()) { task in
-            // Downcast the parameter to an app refresh task as this identifier is used for a refresh request.
-            //If we keep requiredExternalPower = true then it required device is connected to external power.
-            self.handleAppRefresh(task: task as! BGProcessingTask)
-        }
-    }
+}
 
-    // MARK: - Scheduling Tasks
-    
-    func scheduleAppRefresh() {
-        debugPrint("Scheduling App Refresh...")
-        BGTaskScheduler.shared.cancelAllTaskRequests()
+// MARK: - BackgroundTasks Framework
 
-        //let request = BGAppRefreshTaskRequest(identifier: RefreshTaskIdentifier)
-        let request = BGProcessingTaskRequest(identifier: RefreshTaskIdentifier)
-        request.requiresNetworkConnectivity = true // Defaults to false.
-        request.requiresExternalPower = false
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 1 * 60) // Fetch no earlier than 1 minute from now
-        do {
-            try BGTaskScheduler.shared.submit(request)
-            NotificationCenter.default.post(name: DataReceivialScheduledInBackgroundNotification, object: nil, userInfo: ["time" : Date()])
-        } catch {
-            print("Could not schedule app refresh: \(error)")
-            print("Attempting URLSession downloadTask...")
-            fetchRSS(url: TopPaidAppsFeed, task: backgroundTask)
-        }
-    }
-
-    // MARK: - Handling Launch for Tasks
-
-    // Fetch the latest feed entries from server.
-    // - BGAppRefreshTask
-    func handleAppRefresh(task: BGProcessingTask) {
-        debugPrint("Scheduling App Refresh...")
-        backgroundTask = task
+extension SceneDelegate {
+        // MARK: - Register Launch Handlers for Background Tasks
         
-//        task.expirationHandler = {
-//            //This Block call by System
-//            //Canle your all tak's & queues
-//        }
-//
-//        fetchRSS(url: TopPaidAppsFeed, task: task)
-
-        //task.setTaskCompleted(success: true)
-        let queue = OperationQueue()
-        queue.maxConcurrentOperationCount = 1
-
-        let dataFetchOperation = FetchTopAppsOperation(url: TopPaidAppsFeed, delegate: self)
-        task.expirationHandler = {
-            // After all operations are cancelled, the completion block below is called to set the task to complete.
-            debugPrint("expirationHandler...")
-            queue.cancelAllOperations()
+        func registerLaunchHandlersForBackgroundTasks() {
+            BGTaskScheduler.shared.register(forTaskWithIdentifier: RefreshTaskIdentifier, using: DispatchQueue.global()) { task in
+                // Downcast the parameter to an app refresh task as this identifier is used for a refresh request.
+                //If we keep requiredExternalPower = true then it required device is connected to external power.
+                self.handleAppRefresh(task: task as! BGProcessingTask)
+            }
         }
-        dataFetchOperation.completionBlock = {
-            debugPrint("setTaskCompleted...")
-            task.setTaskCompleted(success: true)
-        }
-        queue.addOperation(dataFetchOperation)
+
+        // MARK: - Scheduling Tasks
         
-        scheduleAppRefresh()
-    }
+        func scheduleAppRefresh() {
+            debugPrint("Scheduling App Refresh...")
+            BGTaskScheduler.shared.cancelAllTaskRequests()
+
+            //let request = BGAppRefreshTaskRequest(identifier: RefreshTaskIdentifier)
+            let request = BGProcessingTaskRequest(identifier: RefreshTaskIdentifier)
+            request.requiresNetworkConnectivity = true // Defaults to false.
+            request.requiresExternalPower = false
+            request.earliestBeginDate = Date(timeIntervalSinceNow: 1 * 60) // Fetch no earlier than 1 minute from now
+            do {
+                try BGTaskScheduler.shared.submit(request)
+                NotificationCenter.default.post(name: DataReceivialScheduledInBackgroundNotification, object: nil, userInfo: ["time" : Date()])
+            } catch {
+                print("Could not schedule app refresh: \(error)")
+                print("Attempting URLSession downloadTask...")
+                fetchRSS(url: TopPaidAppsFeed, task: backgroundTask)
+            }
+        }
+
+        // MARK: - Handling Launch for Tasks
+
+        // Fetch the latest feed entries from server.
+        // - BGAppRefreshTask
+        func handleAppRefresh(task: BGProcessingTask) {
+            debugPrint("Scheduling App Refresh...")
+            backgroundTask = task
+            
+            let queue = OperationQueue()
+            queue.maxConcurrentOperationCount = 1
+
+            let dataFetchOperation = FetchTopAppsOperation(url: TopPaidAppsFeed, delegate: self)
+            task.expirationHandler = {
+                // After all operations are cancelled, the completion block below is called to set the task to complete.
+                debugPrint("expirationHandler...")
+                queue.cancelAllOperations()
+            }
+            dataFetchOperation.completionBlock = {
+                debugPrint("setTaskCompleted...")
+                task.setTaskCompleted(success: true)
+            }
+            queue.addOperation(dataFetchOperation)
+            
+            scheduleAppRefresh()
+        }
 }
 
 // MARK: - URLSessionDownloadDelegate
